@@ -4,6 +4,15 @@
 
 #pragma once
 
+#include <vector>
+
+struct BubbleState
+{
+	bool active;
+	int row;
+	int col;
+	ULONGLONG placedTime;
+};
 
 class CBubbleBattleView : public CView
 {
@@ -50,6 +59,18 @@ public:
 	// 判定函数
 	bool CanMoveTo(double newX, double newY) const;
 	void DrawPixelPlayer(CDC* pDC, int x, int y, bool moving, int direction, int frame);
+	// 泡泡与爆炸状态
+	BubbleState bubble;
+	bool spacePressed;
+	bool explosionActive;
+	ULONGLONG explosionStartTime;
+	std::vector<CPoint> explosionCells;
+
+	void PlaceBubble();
+	void ExplodeBubble();
+	void AddExplosionDirection(int startRow, int startCol, int dr, int dc);
+	void DrawBubble(CDC* pDC);
+	void DrawExplosion(CDC* pDC);
 protected:
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
