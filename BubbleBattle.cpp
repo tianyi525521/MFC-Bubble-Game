@@ -11,6 +11,7 @@
 
 #include "BubbleBattleDoc.h"
 #include "BubbleBattleView.h"
+#include "BubbleGameUIView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -84,8 +85,8 @@ BOOL CBubbleBattleApp::InitInstance()
 	pDocTemplate = new CSingleDocTemplate(
 		IDR_MAINFRAME,
 		RUNTIME_CLASS(CBubbleBattleDoc),
-		RUNTIME_CLASS(CMainFrame),       // 主 SDI 框架窗口
-		RUNTIME_CLASS(CBubbleBattleView));
+		RUNTIME_CLASS(CMainFrame),
+		RUNTIME_CLASS(CBubbleGameUIView));   
 	if (!pDocTemplate)
 		return FALSE;
 	AddDocTemplate(pDocTemplate);

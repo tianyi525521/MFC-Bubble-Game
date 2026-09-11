@@ -32,12 +32,15 @@ public:
 protected:  // 控件条嵌入成员
 	// Retained for compatibility with existing code that references m_wndToolBar.
 	CToolBar          m_wndToolBar;
-
+	CView* m_pUIView;
+	CView* m_pGameView;
 // 生成的消息映射函数
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	DECLARE_MESSAGE_MAP()
 
+public:
+	void SwitchToView(CRuntimeClass* pViewClass);
 };
 
 

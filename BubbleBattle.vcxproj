@@ -198,7 +198,9 @@
     <ClInclude Include="BubbleBattle.h" />
     <ClInclude Include="BubbleBattleDoc.h" />
     <ClInclude Include="BubbleBattleView.h" />
+    <ClInclude Include="BubbleGameUIView.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="GameConfig.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
@@ -208,6 +210,8 @@
     <ClCompile Include="BubbleBattle.cpp" />
     <ClCompile Include="BubbleBattleDoc.cpp" />
     <ClCompile Include="BubbleBattleView.cpp" />
+    <ClCompile Include="BubbleGameUIView.cpp" />
+    <ClCompile Include="GameConfig.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -223,6 +227,26 @@
     <None Include="res\BubbleBattle.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\3732.jpg_wh860.bmp" />
+    <Image Include="..\background.bmp" />
+    <Image Include="..\down.bmp" />
+    <Image Include="..\IDB_ENEMY0_DOWN.bmp" />
+    <Image Include="..\IDB_ENEMY0_LEFT.bmp" />
+    <Image Include="..\IDB_ENEMY0_RIGHT.bmp" />
+    <Image Include="..\IDB_ENEMY0_UP.bmp" />
+    <Image Include="..\IDB_ENEMY1_DOWN.bmp" />
+    <Image Include="..\IDB_ENEMY1_LEFT.bmp" />
+    <Image Include="..\IDB_ENEMY1_RIGHT.bmp" />
+    <Image Include="..\IDB_ENEMY1_UP.bmp" />
+    <Image Include="..\IDB_ENEMY2_DOWN.bmp" />
+    <Image Include="..\IDB_ENEMY2_LEFT.bmp" />
+    <Image Include="..\IDB_ENEMY2_RIGHT.bmp" />
+    <Image Include="..\IDB_ENEMY2_UP.bmp" />
+    <Image Include="..\left.bmp" />
+    <Image Include="..\map_sea_object5.bmp" />
+    <Image Include="..\right.bmp" />
+    <Image Include="..\up.bmp" />
+    <Image Include="res\bitmap1.bmp" />
     <Image Include="res\BubbleBattle.ico" />
     <Image Include="res\BubbleBattleDoc.ico" />
     <Image Include="res\Toolbar.bmp" />

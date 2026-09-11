@@ -7,6 +7,8 @@
 #include "BubbleBattle.h"
 
 #include "MainFrm.h"
+#include "BubbleGameUIView.h"        
+#include "BubbleBattleView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -23,10 +25,10 @@ END_MESSAGE_MAP()
 // CMainFrame 构造/析构
 
 CMainFrame::CMainFrame() noexcept
+    : m_pUIView(nullptr)
+    , m_pGameView(nullptr)
 {
-	// TODO: 在此添加成员初始化代码
 }
-
 CMainFrame::~CMainFrame()
 {
 }
@@ -77,6 +79,71 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 	return TRUE;
 }
 
+void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
+{
+    CView* pOldView = GetActiveView();
+    if (pOldView == nullptr) return;
+    if (pOldView->IsKindOf(pViewClass)) return;
+
+    // ============================================================
+    // 1. 先查缓存，目标视图可能已创建过
+    // ============================================================
+    CView* pTargetView = nullptr;
+    if (pViewClass == RUNTIME_CLASS(CBubbleGameUIView))
+        pTargetView = m_pUIView;
+    else if (pViewClass == RUNTIME_CLASS(CBubbleBattleView))
+        pTargetView = m_pGameView;
+
+    // ============================================================
+    // 2. 首次切换：创建视图（不用文档 context）
+    // ============================================================
+    BOOL bNewlyCreated = FALSE;
+    if (pTargetView == nullptr)
+    {
+        pTargetView = (CView*)pViewClass->CreateObject();
+        if (pTargetView == nullptr) return;
+
+        CRect rcClient;
+        GetClientRect(&rcClient);
+
+        UINT nID = AFX_IDW_PANE_FIRST + 1;
+
+        // ★★★ 最后一个参数是 nullptr，不用 CCreateContext
+        if (!pTargetView->Create(nullptr, nullptr, AFX_WS_DEFAULT_VIEW,
+            rcClient, this, nID, nullptr))
+        {
+            delete pTargetView;
+            return;
+        }
+
+        pTargetView->ShowWindow(SW_HIDE);
+        bNewlyCreated = TRUE;
+
+        if (pViewClass == RUNTIME_CLASS(CBubbleGameUIView))
+            m_pUIView = pTargetView;
+        else if (pViewClass == RUNTIME_CLASS(CBubbleBattleView))
+            m_pGameView = pTargetView;
+    }
+
+    // ============================================================
+    // 3. 切换显示（不销毁任何视图）
+    // ============================================================
+    pOldView->ShowWindow(SW_HIDE);
+    pTargetView->ShowWindow(SW_SHOW);
+    SetActiveView(pTargetView);
+    pTargetView->SetFocus();
+    RecalcLayout();
+    pTargetView->Invalidate();
+
+    // ============================================================
+    // 4. 新创建的视图，调用一次 OnInitialUpdate
+    //    （MFC 的 CreateView 会自动调，我们用 Create 所以手动调）
+    // ============================================================
+    if (bNewlyCreated)
+    {
+        pTargetView->OnInitialUpdate();
+    }
+}
 // CMainFrame 诊断
 
 #ifdef _DEBUG

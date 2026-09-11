@@ -39,6 +39,12 @@
     <ClInclude Include="pch.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="GameConfig.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="BubbleGameUIView.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BubbleBattle.cpp">
@@ -54,6 +60,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="BubbleBattleView.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GameConfig.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="BubbleGameUIView.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -75,6 +87,66 @@
       <Filter>资源文件</Filter>
     </Image>
     <Image Include="res\Toolbar.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\bitmap1.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\up.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\down.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\left.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\right.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY0_UP.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY0_DOWN.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY0_LEFT.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY0_RIGHT.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY1_UP.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY1_DOWN.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY1_LEFT.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY1_RIGHT.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY2_UP.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY2_DOWN.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY2_LEFT.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\IDB_ENEMY2_RIGHT.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\background.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\map_sea_object5.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\3732.jpg_wh860.bmp">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>
