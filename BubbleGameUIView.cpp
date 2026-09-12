@@ -11,9 +11,197 @@
 #include "BubbleBattleView.h"
 #include "BubbleGameUIView.h"
 
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+namespace
+{
+    // 菜单最初就是按照 980 x 680 设计的。
+    // 绘制时始终使用这套逻辑坐标，再整体等比例映射到实际窗口。
+    constexpr int DESIGN_WIDTH = 980;
+    constexpr int DESIGN_HEIGHT = 680;
+
+    HWND g_helpWindowHandle = nullptr;
+
+    class CGameHelpWindow : public CFrameWnd
+    {
+    public:
+        BOOL CreateHelpWindow(CWnd* pOwner)
+        {
+            const int windowWidth = 640;
+            const int windowHeight = 430;
+
+            CRect ownerRect;
+            pOwner->GetWindowRect(&ownerRect);
+
+            const int x = ownerRect.left + (ownerRect.Width() - windowWidth) / 2;
+            const int y = ownerRect.top + (ownerRect.Height() - windowHeight) / 2;
+            CRect windowRect(x, y, x + windowWidth, y + windowHeight);
+
+            return Create(
+                nullptr,
+                _T("玩法说明"),
+                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+                windowRect,
+                pOwner);
+        }
+
+    protected:
+        afx_msg void OnPaint()
+        {
+            CPaintDC dc(this);
+
+            CRect clientRect;
+            GetClientRect(&clientRect);
+            dc.FillSolidRect(clientRect, RGB(246, 249, 255));
+            dc.SetBkMode(TRANSPARENT);
+
+            CFont titleFont;
+            titleFont.CreatePointFont(240, _T("Microsoft YaHei"));
+            CFont* oldFont = dc.SelectObject(&titleFont);
+            dc.SetTextColor(RGB(38, 82, 155));
+
+            CRect titleRect(0, 22, clientRect.Width(), 76);
+            dc.DrawText(_T("玩法说明"), &titleRect,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+            dc.SelectObject(oldFont);
+
+            CRect player1Card(40, 95, clientRect.Width() - 40, 205);
+            CRect player2Card(40, 225, clientRect.Width() - 40, 335);
+
+            CBrush cardBrush(RGB(255, 255, 255));
+            CPen cardPen(PS_SOLID, 2, RGB(170, 195, 230));
+            CBrush* oldBrush = dc.SelectObject(&cardBrush);
+            CPen* oldPen = dc.SelectObject(&cardPen);
+            dc.RoundRect(player1Card, CPoint(22, 22));
+            dc.RoundRect(player2Card, CPoint(22, 22));
+            dc.SelectObject(oldBrush);
+            dc.SelectObject(oldPen);
+
+            CFont playerFont;
+            playerFont.CreatePointFont(175, _T("Microsoft YaHei"));
+            oldFont = dc.SelectObject(&playerFont);
+            dc.SetTextColor(RGB(45, 80, 145));
+
+            CRect player1Title = player1Card;
+            player1Title.left += 24;
+            player1Title.right = player1Title.left + 120;
+            dc.DrawText(_T("玩家 1"), &player1Title,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+            CRect player2Title = player2Card;
+            player2Title.left += 24;
+            player2Title.right = player2Title.left + 120;
+            dc.DrawText(_T("玩家 2"), &player2Title,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+            CFont detailFont;
+            detailFont.CreatePointFont(140, _T("Microsoft YaHei"));
+            dc.SelectObject(&detailFont);
+            dc.SetTextColor(RGB(80, 100, 135));
+
+            CRect player1Detail = player1Card;
+            player1Detail.left += 165;
+            player1Detail.right -= 20;
+            dc.DrawText(_T("方向键移动    Enter 放置炸弹"), &player1Detail,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+            CRect player2Detail = player2Card;
+            player2Detail.left += 165;
+            player2Detail.right -= 20;
+            dc.DrawText(_T("W A S D 移动    空格键放置炸弹"), &player2Detail,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+            dc.SelectObject(oldFont);
+        }
+
+        virtual void PostNcDestroy() override
+        {
+            g_helpWindowHandle = nullptr;
+            // CFrameWnd 的默认实现会自动释放动态创建的窗口对象。
+            CFrameWnd::PostNcDestroy();
+        }
+
+        DECLARE_MESSAGE_MAP()
+    };
+
+    BEGIN_MESSAGE_MAP(CGameHelpWindow, CFrameWnd)
+        ON_WM_PAINT()
+    END_MESSAGE_MAP()
+
+    void ShowGameHelpWindow(CWnd* pOwner)
+    {
+        if (::IsWindow(g_helpWindowHandle))
+        {
+            ::ShowWindow(g_helpWindowHandle, SW_RESTORE);
+            ::SetForegroundWindow(g_helpWindowHandle);
+            return;
+        }
+
+        CGameHelpWindow* pHelpWindow = new CGameHelpWindow();
+        if (!pHelpWindow->CreateHelpWindow(pOwner))
+        {
+            delete pHelpWindow;
+            AfxMessageBox(_T("无法创建玩法说明窗口。"));
+            return;
+        }
+
+        g_helpWindowHandle = pHelpWindow->GetSafeHwnd();
+        pHelpWindow->ShowWindow(SW_SHOW);
+        pHelpWindow->UpdateWindow();
+    }
+
+    CRect GetDesignRect()
+    {
+        return CRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+    }
+
+    void SetDesignCoordinateSystem(CDC* pDC, const CRect& clientRect)
+    {
+        if (clientRect.Width() <= 0 || clientRect.Height() <= 0)
+            return;
+
+        const double scaleX = static_cast<double>(clientRect.Width()) / DESIGN_WIDTH;
+        const double scaleY = static_cast<double>(clientRect.Height()) / DESIGN_HEIGHT;
+        const double scale = (scaleX < scaleY) ? scaleX : scaleY;
+
+        int viewportWidth = static_cast<int>(DESIGN_WIDTH * scale + 0.5);
+        int viewportHeight = static_cast<int>(DESIGN_HEIGHT * scale + 0.5);
+        if (viewportWidth < 1) viewportWidth = 1;
+        if (viewportHeight < 1) viewportHeight = 1;
+        const int offsetX = (clientRect.Width() - viewportWidth) / 2;
+        const int offsetY = (clientRect.Height() - viewportHeight) / 2;
+
+        pDC->SetMapMode(MM_ANISOTROPIC);
+        pDC->SetWindowExt(DESIGN_WIDTH, DESIGN_HEIGHT);
+        pDC->SetViewportExt(viewportWidth, viewportHeight);
+        pDC->SetViewportOrg(offsetX, offsetY);
+    }
+
+    CPoint ClientPointToDesignPoint(const CRect& clientRect, CPoint point)
+    {
+        if (clientRect.Width() <= 0 || clientRect.Height() <= 0)
+            return point;
+
+        const double scaleX = static_cast<double>(clientRect.Width()) / DESIGN_WIDTH;
+        const double scaleY = static_cast<double>(clientRect.Height()) / DESIGN_HEIGHT;
+        const double scale = (scaleX < scaleY) ? scaleX : scaleY;
+
+        int viewportWidth = static_cast<int>(DESIGN_WIDTH * scale + 0.5);
+        int viewportHeight = static_cast<int>(DESIGN_HEIGHT * scale + 0.5);
+        if (viewportWidth < 1) viewportWidth = 1;
+        if (viewportHeight < 1) viewportHeight = 1;
+        const int offsetX = (clientRect.Width() - viewportWidth) / 2;
+        const int offsetY = (clientRect.Height() - viewportHeight) / 2;
+
+        return CPoint(
+            MulDiv(point.x - offsetX, DESIGN_WIDTH, viewportWidth),
+            MulDiv(point.y - offsetY, DESIGN_HEIGHT, viewportHeight));
+    }
+}
 
 IMPLEMENT_DYNCREATE(CBubbleGameUIView, CView)
 
@@ -55,6 +243,15 @@ BOOL CBubbleGameUIView::PreCreateWindow(CREATESTRUCT& cs)
 
 void CBubbleGameUIView::OnDraw(CDC* pDC)
 {
+    CRect clientRect;
+    GetClientRect(&clientRect);
+
+    // 先填满实际窗口，宽屏下两侧也保持与页面相同的背景颜色。
+    pDC->FillSolidRect(clientRect, RGB(246, 249, 255));
+
+    const int savedDC = pDC->SaveDC();
+    SetDesignCoordinateSystem(pDC, clientRect);
+
     switch (gameState)
     {
     case GameState::MAIN_MENU:
@@ -70,6 +267,8 @@ void CBubbleGameUIView::OnDraw(CDC* pDC)
         DrawReadyPage(pDC);
         break;
     }
+
+    pDC->RestoreDC(savedDC);
 }
 
 // ============================================================
@@ -78,8 +277,7 @@ void CBubbleGameUIView::OnDraw(CDC* pDC)
 
 void CBubbleGameUIView::DrawPageBackground(CDC* pDC)
 {
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
 
     // 整体浅背景
     pDC->FillSolidRect(clientRect, RGB(246, 249, 255));
@@ -92,8 +290,7 @@ void CBubbleGameUIView::DrawPageBackground(CDC* pDC)
 
 void CBubbleGameUIView::DrawTitle(CDC* pDC, const CString& title, int y)
 {
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
 
     CFont font;
     font.CreatePointFont(300, _T("Microsoft YaHei"));
@@ -113,8 +310,7 @@ void CBubbleGameUIView::DrawTitle(CDC* pDC, const CString& title, int y)
 
 void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString& subtitle)
 {
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
     int H = clientRect.Height();
 
@@ -127,7 +323,8 @@ void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString
     CFont* oldFont = pDC->SelectObject(&titleFont);
     pDC->SetTextColor(RGB(38, 82, 155));
 
-    CRect titleRect(0, (int)(H * 0.08), W, (int)(H * 0.18));
+    // 标题区域要比字体本身更高，否则在整体放大后中文顶部或底部会被裁切。
+    CRect titleRect(0, (int)(H * 0.05), W, (int)(H * 0.20));
     pDC->DrawText(title, &titleRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     pDC->SelectObject(oldFont);
 
@@ -138,7 +335,8 @@ void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString
     oldFont = pDC->SelectObject(&subFont);
     pDC->SetTextColor(RGB(110, 125, 150));
 
-    CRect subRect(0, (int)(H * 0.19), W, (int)(H * 0.24));
+    // 副标题单独占一行，与主标题之间保留间距。
+    CRect subRect(0, (int)(H * 0.20), W, (int)(H * 0.28));
     pDC->DrawText(subtitle, &subRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     pDC->SelectObject(oldFont);
@@ -150,8 +348,7 @@ void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString
 
 void CBubbleGameUIView::DrawSubtitle(CDC* pDC, const CString& text, int y)
 {
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
 
     CFont font;
     font.CreatePointFont(120, _T("Microsoft YaHei"));
@@ -169,7 +366,12 @@ void CBubbleGameUIView::DrawSubtitle(CDC* pDC, const CString& text, int y)
 // 公共按钮
 // ============================================================
 
-void CBubbleGameUIView::DrawButton(CDC* pDC, const CRect& rect, const CString& text, bool primary)
+void CBubbleGameUIView::DrawButton(
+    CDC* pDC,
+    const CRect& rect,
+    const CString& text,
+    bool primary,
+    bool selected)
 {
     COLORREF fillColor;
     COLORREF borderColor;
@@ -188,8 +390,11 @@ void CBubbleGameUIView::DrawButton(CDC* pDC, const CRect& rect, const CString& t
         textColor = RGB(45, 85, 145);
     }
 
+    if (selected)
+        borderColor = RGB(255, 150, 35);
+
     CBrush brush(fillColor);
-    CPen pen(PS_SOLID, 2, borderColor);
+    CPen pen(PS_SOLID, selected ? 4 : 2, borderColor);
 
     CBrush* oldBrush = pDC->SelectObject(&brush);
     CPen* oldPen = pDC->SelectObject(&pen);
@@ -206,6 +411,19 @@ void CBubbleGameUIView::DrawButton(CDC* pDC, const CRect& rect, const CString& t
     CRect textRect = rect;
     textRect.DeflateRect(8, 4);
     pDC->DrawText(text, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+    if (selected)
+    {
+        // 静态橙色圆点表示当前选中的操作。
+        CBrush markerBrush(RGB(255, 150, 35));
+        CPen markerPen(PS_SOLID, 1, RGB(230, 120, 20));
+        CBrush* previousBrush = pDC->SelectObject(&markerBrush);
+        CPen* previousPen = pDC->SelectObject(&markerPen);
+        const int markerY = rect.top + rect.Height() / 2;
+        pDC->Ellipse(rect.left + 12, markerY - 6, rect.left + 24, markerY + 6);
+        pDC->SelectObject(previousBrush);
+        pDC->SelectObject(previousPen);
+    }
 
     pDC->SelectObject(oldFont);
     pDC->SelectObject(oldBrush);
@@ -244,8 +462,7 @@ void CBubbleGameUIView::DrawMainMenu(CDC* pDC)
 
     DrawHeader(pDC, _T("泡 泡 堂"), _T("C++ / MFC 课程设计"));
 
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
     int H = clientRect.Height();
 
@@ -263,7 +480,7 @@ void CBubbleGameUIView::DrawMainMenu(CDC* pDC)
     exitButton = CRect(centerX - buttonWidth / 2, y3, centerX + buttonWidth / 2, y3 + buttonHeight);
 
     DrawButton(pDC, startButton, _T("开始游戏"), true);
-    DrawButton(pDC, helpButton, _T("游戏说明"));
+    DrawButton(pDC, helpButton, _T("玩法说明"));
     DrawButton(pDC, exitButton, _T("退出游戏"));
 }
 
@@ -277,8 +494,7 @@ void CBubbleGameUIView::DrawModeSelect(CDC* pDC)
 
     DrawHeader(pDC, _T("选择游戏模式"), _T("选择一种玩法开始游戏"));
 
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
     int H = clientRect.Height();
     int centerX = W / 2;
@@ -294,8 +510,8 @@ void CBubbleGameUIView::DrawModeSelect(CDC* pDC)
     singleButton = CRect(centerX - gap / 2 - cardWidth, top, centerX - gap / 2, top + cardHeight);
     multiButton = CRect(centerX + gap / 2, top, centerX + gap / 2 + cardWidth, top + cardHeight);
 
-    DrawCard(pDC, singleButton);
-    DrawCard(pDC, multiButton);
+    DrawCard(pDC, singleButton, selectedMode == 1);
+    DrawCard(pDC, multiButton, selectedMode == 2);
 
     // ---- 模式标题 ----
     CFont titleFont;
@@ -333,8 +549,11 @@ void CBubbleGameUIView::DrawModeSelect(CDC* pDC)
 
     pDC->SelectObject(oldFont);
 
-    // 返回按钮放在底部
-    backButton = CRect(centerX - 110, (int)(H * 0.78), centerX + 110, (int)(H * 0.78) + 58);
+    // 先选择模式，再按确认；返回按钮放在确认按钮右侧。
+    const int actionY = (int)(H * 0.78);
+    modeConfirmButton = CRect(centerX - 230, actionY, centerX - 20, actionY + 58);
+    backButton = CRect(centerX + 20, actionY, centerX + 230, actionY + 58);
+    DrawButton(pDC, modeConfirmButton, _T("确认选择"), selectedMode != 0);
     DrawButton(pDC, backButton, _T("返回"));
 }
 
@@ -354,8 +573,7 @@ void CBubbleGameUIView::DrawCharacterSelect(CDC* pDC)
 
     DrawHeader(pDC, title, _T("点击角色卡片后确认选择"));
 
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
     int H = clientRect.Height();
 
@@ -450,8 +668,7 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
 {
     DrawPageBackground(pDC);
 
-    CRect clientRect;
-    GetClientRect(&clientRect);
+    CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
     int H = clientRect.Height();
     int centerX = W / 2;
@@ -473,19 +690,23 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
     else
     {
         if (player1Character >= 0 && player2Character >= 0)
-            characterText.Format(_T("%s / %s"), characters[player1Character], characters[player2Character]);
+            characterText.Format(
+                _T("%s / %s"),
+                characters[player1Character].GetString(),
+                characters[player2Character].GetString());
         else
             characterText = _T("未选择");
     }
 
     // ---- 两张信息卡片 ----
-    const int cardWidth = 250;
-    const int cardHeight = 180;
-    const int gap = 45;
+    const int cardWidth = 290;
+    const int cardHeight = 190;
+    const int gap = 90;
 
-    int totalWidth = cardWidth * 3 + gap * 2;
+    // 当前只有两张卡片。原代码按三张卡片计算总宽度，导致整体向左偏移。
+    int totalWidth = cardWidth * 2 + gap;
     int startX = centerX - totalWidth / 2;
-    int cardTop = (int)(H * 0.34);
+    int cardTop = (int)(H * 0.35);
 
     CRect modeCard(startX, cardTop, startX + cardWidth, cardTop + cardHeight);
     CRect characterCard(startX + cardWidth + gap, cardTop, startX + cardWidth * 2 + gap, cardTop + cardHeight);
@@ -500,12 +721,12 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
     pDC->SetTextColor(RGB(120, 135, 160));
 
     CRect modeLabel = modeCard;
-    modeLabel.top += 30;
+    modeLabel.top += 24;
     modeLabel.bottom = modeLabel.top + 35;
     pDC->DrawText(_T("游戏模式"), &modeLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     CRect characterLabel = characterCard;
-    characterLabel.top += 30;
+    characterLabel.top += 24;
     characterLabel.bottom = characterLabel.top + 35;
     pDC->DrawText(_T("角色配置"), &characterLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
@@ -513,18 +734,21 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
 
     // ---- 值字体 ----
     CFont valueFont;
-    valueFont.CreatePointFont(180, _T("Microsoft YaHei"));
+    valueFont.CreatePointFont(170, _T("Microsoft YaHei"));
     oldFont = pDC->SelectObject(&valueFont);
     pDC->SetTextColor(RGB(45, 80, 145));
 
     CRect modeValue = modeCard;
-    modeValue.top += 85;
-    modeValue.bottom = modeValue.top + 55;
+    modeValue.top += 88;
+    modeValue.bottom = modeValue.top + 60;
     pDC->DrawText(modeText, &modeValue, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     CRect characterValue = characterCard;
-    characterValue.top += 85;
-    characterValue.bottom = characterValue.top + 55;
+    // 左侧留给角色贴图，右侧单独显示角色名称，二者不再重叠。
+    characterValue.left += 115;
+    characterValue.right -= 12;
+    characterValue.top += 78;
+    characterValue.bottom = characterValue.top + 75;
 
     // 显示玩家1角色的位图
     if (player1Character >= 0)
@@ -542,15 +766,15 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
         {
             BITMAP bm;
             pBmp1->GetBitmap(&bm);
-            int sz = 60;
-            int cx = characterCard.left + characterCard.Width() / 2;
-            int cy = characterCard.top + 60;
+            const int sz = 70;
+            const int cx = characterCard.left + 68;
+            const int cy = characterCard.top + 115;
 
             CDC memDC;
             memDC.CreateCompatibleDC(pDC);
             CBitmap* pOld = memDC.SelectObject(pBmp1);
-            pDC->StretchBlt(cx - sz / 2, cy - sz / 2, sz, sz,
-                &memDC, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+            pDC->TransparentBlt(cx - sz / 2, cy - sz / 2, sz, sz,
+                &memDC, 0, 0, bm.bmWidth, bm.bmHeight, RGB(255, 255, 255));
             memDC.SelectObject(pOld);
             memDC.DeleteDC();
         }
@@ -581,26 +805,33 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
 
 void CBubbleGameUIView::OnLButtonDown(UINT nFlags, CPoint point)
 {
+    // 按钮矩形使用 980 x 680 的设计坐标，因此点击位置也要换算
+    // 到同一套坐标中，保证放大后的按钮仍能准确点击。
+    CRect clientRect;
+    GetClientRect(&clientRect);
+    point = ClientPointToDesignPoint(clientRect, point);
+
     // ---- 主菜单 ----
     if (gameState == GameState::MAIN_MENU)
     {
         if (startButton.PtInRect(point))
         {
+            selectedMode = 0;
+            player1Character = -1;
+            player2Character = -1;
+            selectingPlayer = 1;
             gameState = GameState::MODE_SELECT;
             Invalidate();
         }
         else if (helpButton.PtInRect(point))
         {
-            AfxMessageBox(
-                _T("游戏操作说明\n\n")
-                _T("玩家1：W A S D 移动\n")
-                _T("空格键：放置炸弹\n\n")
-                _T("玩家2：方向键移动\n")
-                _T("Enter：放置炸弹"));
+            ShowGameHelpWindow(AfxGetMainWnd());
         }
         else if (exitButton.PtInRect(point))
         {
-            int result = AfxMessageBox(_T("确定要退出游戏吗？"), MB_YESNO | MB_ICONQUESTION);
+            const int result = AfxMessageBox(
+                _T("确定要退出游戏吗？"),
+                MB_YESNO | MB_ICONQUESTION);
             if (result == IDYES)
                 AfxGetMainWnd()->SendMessage(WM_CLOSE);
         }
@@ -611,23 +842,31 @@ void CBubbleGameUIView::OnLButtonDown(UINT nFlags, CPoint point)
         if (singleButton.PtInRect(point))
         {
             selectedMode = 1;
-            player1Character = -1;
-            player2Character = -1;
-            selectingPlayer = 1;
-            gameState = GameState::CHARACTER_SELECT;
             Invalidate();
         }
         else if (multiButton.PtInRect(point))
         {
             selectedMode = 2;
-            player1Character = -1;
-            player2Character = -1;
-            selectingPlayer = 1;
-            gameState = GameState::CHARACTER_SELECT;
             Invalidate();
+        }
+        else if (modeConfirmButton.PtInRect(point))
+        {
+            if (selectedMode == 0)
+            {
+                AfxMessageBox(_T("请先选择单人模式或双人模式。"));
+            }
+            else
+            {
+                player1Character = -1;
+                player2Character = -1;
+                selectingPlayer = 1;
+                gameState = GameState::CHARACTER_SELECT;
+                Invalidate();
+            }
         }
         else if (backButton.PtInRect(point))
         {
+            selectedMode = 0;
             gameState = GameState::MAIN_MENU;
             Invalidate();
         }
@@ -794,3 +1033,6 @@ CBubbleBattleDoc* CBubbleGameUIView::GetDocument() const
 }
 
 #endif
+
+
+

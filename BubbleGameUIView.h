@@ -97,6 +97,7 @@ private:
 
     CRect singleButton;
     CRect multiButton;
+    CRect modeConfirmButton;
     CRect backButton;
 
 
@@ -130,7 +131,6 @@ private:
 
     CRect readyStartButton;
     CRect readyBackButton;
-
 
     // ============================================================
     // 页面绘制
@@ -177,7 +177,8 @@ private:
         CDC* pDC,
         const CRect& rect,
         const CString& text,
-        bool primary = false
+        bool primary = false,
+        bool selected = false
     );
 
     void DrawCard(
@@ -185,7 +186,6 @@ private:
         const CRect& rect,
         bool selected = false
     );
-
 
     // ============================================================
     // 鼠标
@@ -208,3 +208,4 @@ inline CBubbleBattleDoc* CBubbleGameUIView::GetDocument() const
 }
 
 #endif
+
