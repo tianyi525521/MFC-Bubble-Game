@@ -73,12 +73,15 @@ void CBubbleBattleView::LoadBitmaps()
         UINT up, down, left, right;
     };
 
-    // 每个角色 4 方向
+    // 每个角色 4 方向。
+    // 注意：素材里“上/下”两张图的朝向和方向键是相反的——
+    // 文件名带 UP 的那张其实是正面（朝屏幕下方走时该显示的脸），带 DOWN 的才是背面。
+    // 所以这里把两者对调，保证向上走显示背面、向下走显示正面。
     CharRes charRes[4] = {
-        { IDB_PLAYER_UP, IDB_PLAYER_DOWN, IDB_PLAYER_LEFT, IDB_PLAYER_RIGHT },
-        { IDB_ENEMY0_UP, IDB_ENEMY0_DOWN, IDB_ENEMY0_LEFT, IDB_ENEMY0_RIGHT },
-        { IDB_ENEMY1_UP, IDB_ENEMY1_DOWN, IDB_ENEMY1_LEFT, IDB_ENEMY1_RIGHT },
-        { IDB_ENEMY2_UP, IDB_ENEMY2_DOWN, IDB_ENEMY2_LEFT, IDB_ENEMY2_RIGHT }
+        { IDB_PLAYER_DOWN, IDB_PLAYER_UP, IDB_PLAYER_LEFT, IDB_PLAYER_RIGHT },
+        { IDB_ENEMY0_DOWN, IDB_ENEMY0_UP, IDB_ENEMY0_LEFT, IDB_ENEMY0_RIGHT },
+        { IDB_ENEMY1_DOWN, IDB_ENEMY1_UP, IDB_ENEMY1_LEFT, IDB_ENEMY1_RIGHT },
+        { IDB_ENEMY2_DOWN, IDB_ENEMY2_UP, IDB_ENEMY2_LEFT, IDB_ENEMY2_RIGHT }
     };
 
     // 辅助宏：加载后立即检查
@@ -117,25 +120,14 @@ void CBubbleBattleView::LoadBitmaps()
     SAFE_LOAD(m_bmpBackground, IDB_MAP_BACKGROUND);
 
     // 4 种角色（敌人用，索引顺序 0=LEFT, 1=RIGHT, 2=UP, 3=DOWN）
-    SAFE_LOAD(m_enemyBitmaps[0][0], IDB_PLAYER_LEFT);
-    SAFE_LOAD(m_enemyBitmaps[0][1], IDB_PLAYER_RIGHT);
-    SAFE_LOAD(m_enemyBitmaps[0][2], IDB_PLAYER_UP);
-    SAFE_LOAD(m_enemyBitmaps[0][3], IDB_PLAYER_DOWN);
-
-    SAFE_LOAD(m_enemyBitmaps[1][0], IDB_ENEMY0_LEFT);
-    SAFE_LOAD(m_enemyBitmaps[1][1], IDB_ENEMY0_RIGHT);
-    SAFE_LOAD(m_enemyBitmaps[1][2], IDB_ENEMY0_UP);
-    SAFE_LOAD(m_enemyBitmaps[1][3], IDB_ENEMY0_DOWN);
-
-    SAFE_LOAD(m_enemyBitmaps[2][0], IDB_ENEMY1_LEFT);
-    SAFE_LOAD(m_enemyBitmaps[2][1], IDB_ENEMY1_RIGHT);
-    SAFE_LOAD(m_enemyBitmaps[2][2], IDB_ENEMY1_UP);
-    SAFE_LOAD(m_enemyBitmaps[2][3], IDB_ENEMY1_DOWN);
-
-    SAFE_LOAD(m_enemyBitmaps[3][0], IDB_ENEMY2_LEFT);
-    SAFE_LOAD(m_enemyBitmaps[3][1], IDB_ENEMY2_RIGHT);
-    SAFE_LOAD(m_enemyBitmaps[3][2], IDB_ENEMY2_UP);
-    SAFE_LOAD(m_enemyBitmaps[3][3], IDB_ENEMY2_DOWN);
+    // 直接复用上面的方向表，敌人的“上/下”也会一并修正。
+    for (int i = 0; i < 4; ++i)
+    {
+        SAFE_LOAD(m_enemyBitmaps[i][0], charRes[i].left);
+        SAFE_LOAD(m_enemyBitmaps[i][1], charRes[i].right);
+        SAFE_LOAD(m_enemyBitmaps[i][2], charRes[i].up);
+        SAFE_LOAD(m_enemyBitmaps[i][3], charRes[i].down);
+    }
 
 #undef SAFE_LOAD
 }

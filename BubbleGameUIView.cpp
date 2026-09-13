@@ -23,6 +23,33 @@ namespace
     constexpr int DESIGN_WIDTH = 980;
     constexpr int DESIGN_HEIGHT = 680;
 
+    // 玩法说明窗口同样按逻辑坐标设计，再整体等比例映射到实际窗口。
+    constexpr int HELP_DESIGN_WIDTH = 720;
+    constexpr int HELP_DESIGN_HEIGHT = 440;
+
+    // 下面两个辅助函数定义在文件后面，这里先声明，供玩法说明窗口调用。
+    double GetHelpWindowScale(CWnd* pOwner);
+    void SetDesignCoordinateSystemFor(
+        CDC* pDC,
+        const CRect& clientRect,
+        int designWidth,
+        int designHeight);
+
+    // 生成“按设计坐标定尺寸”的字体。
+    // 直接用 CreatePointFont 时，字号会先按系统 DPI 放大一次，再被窗口映射放大一次；
+    // 在 125% / 150% 缩放的屏幕上文字会比版式大出一截，顶部或底部被矩形裁掉。
+    // 这里固定按 96 DPI 折算字高，让字体只随窗口映射缩放，始终和版式保持设计时的比例。
+    void CreateDesignFont(CFont& font, int pointSize10)
+    {
+        font.CreateFont(
+            -MulDiv(pointSize10, 96, 720),
+            0, 0, 0, FW_NORMAL,
+            FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+            _T("Microsoft YaHei"));
+    }
+
     HWND g_helpWindowHandle = nullptr;
 
     class CGameHelpWindow : public CFrameWnd
@@ -30,47 +57,75 @@ namespace
     public:
         BOOL CreateHelpWindow(CWnd* pOwner)
         {
-            const int windowWidth = 640;
-            const int windowHeight = 430;
+            // 客户区按和主界面一致的比例换算，再补上标题栏和边框。
+            // 这样在高 DPI 或高分屏上，说明文字的大小与主界面相当，不会显得又小又挤。
+            const double scale = GetHelpWindowScale(pOwner);
+            const int clientWidth = (int)(HELP_DESIGN_WIDTH * scale + 0.5);
+            const int clientHeight = (int)(HELP_DESIGN_HEIGHT * scale + 0.5);
+
+            const DWORD windowStyle =
+                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MAXIMIZEBOX;
+
+            CRect windowRect(0, 0, clientWidth, clientHeight);
+            ::AdjustWindowRectEx(&windowRect, windowStyle, FALSE, 0);
 
             CRect ownerRect;
             pOwner->GetWindowRect(&ownerRect);
 
-            const int x = ownerRect.left + (ownerRect.Width() - windowWidth) / 2;
-            const int y = ownerRect.top + (ownerRect.Height() - windowHeight) / 2;
-            CRect windowRect(x, y, x + windowWidth, y + windowHeight);
+            windowRect.OffsetRect(
+                ownerRect.left + (ownerRect.Width() - windowRect.Width()) / 2,
+                ownerRect.top + (ownerRect.Height() - windowRect.Height()) / 2);
 
             return Create(
                 nullptr,
                 _T("玩法说明"),
-                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+                windowStyle,
                 windowRect,
                 pOwner);
         }
 
     protected:
+        afx_msg BOOL OnEraseBkgnd(CDC* /*pDC*/)
+        {
+            // 背景在 OnPaint 中一次性绘制，避免调整窗口大小时闪烁。
+            return TRUE;
+        }
+
         afx_msg void OnPaint()
         {
             CPaintDC dc(this);
 
             CRect clientRect;
             GetClientRect(&clientRect);
+
+            // 先把实际窗口铺满底色，缩放后四周的留白与页面颜色一致。
             dc.FillSolidRect(clientRect, RGB(246, 249, 255));
             dc.SetBkMode(TRANSPARENT);
 
+            const int savedDC = dc.SaveDC();
+
+            // 与主界面一致：先按逻辑坐标绘制，再整体等比缩放到实际窗口。
+            // 文字会随窗口同步放大，不会撑破卡片而被截断。
+            SetDesignCoordinateSystemFor(
+                &dc, clientRect, HELP_DESIGN_WIDTH, HELP_DESIGN_HEIGHT);
+
+            const int W = HELP_DESIGN_WIDTH;
+
+            // ---- 大标题 ----
             CFont titleFont;
-            titleFont.CreatePointFont(240, _T("Microsoft YaHei"));
+            CreateDesignFont(titleFont, 240);
             CFont* oldFont = dc.SelectObject(&titleFont);
             dc.SetTextColor(RGB(38, 82, 155));
 
-            CRect titleRect(0, 22, clientRect.Width(), 76);
+            CRect titleRect(0, 24, W, 86);
             dc.DrawText(_T("玩法说明"), &titleRect,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
             dc.SelectObject(oldFont);
 
-            CRect player1Card(40, 95, clientRect.Width() - 40, 205);
-            CRect player2Card(40, 225, clientRect.Width() - 40, 335);
+            // ---- 两张玩法卡片 ----
+            CRect player1Card(60, 100, W - 60, 230);
+            CRect player2Card(60, 250, W - 60, 380);
 
             CBrush cardBrush(RGB(255, 255, 255));
             CPen cardPen(PS_SOLID, 2, RGB(170, 195, 230));
@@ -82,40 +137,43 @@ namespace
             dc.SelectObject(oldPen);
 
             CFont playerFont;
-            playerFont.CreatePointFont(175, _T("Microsoft YaHei"));
+            CreateDesignFont(playerFont, 175);
             oldFont = dc.SelectObject(&playerFont);
             dc.SetTextColor(RGB(45, 80, 145));
 
-            CRect player1Title = player1Card;
-            player1Title.left += 24;
-            player1Title.right = player1Title.left + 120;
+            CRect player1Title(
+                player1Card.left, player1Card.top + 20,
+                player1Card.right, player1Card.top + 62);
             dc.DrawText(_T("玩家 1"), &player1Title,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-            CRect player2Title = player2Card;
-            player2Title.left += 24;
-            player2Title.right = player2Title.left + 120;
+            CRect player2Title(
+                player2Card.left, player2Card.top + 20,
+                player2Card.right, player2Card.top + 62);
             dc.DrawText(_T("玩家 2"), &player2Title,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
+            // 操作方式单独占一行，与玩家标题拉开间距。
             CFont detailFont;
-            detailFont.CreatePointFont(140, _T("Microsoft YaHei"));
+            CreateDesignFont(detailFont, 140);
             dc.SelectObject(&detailFont);
             dc.SetTextColor(RGB(80, 100, 135));
 
-            CRect player1Detail = player1Card;
-            player1Detail.left += 165;
-            player1Detail.right -= 20;
+            CRect player1Detail(
+                player1Card.left + 24, player1Card.top + 66,
+                player1Card.right - 24, player1Card.top + 110);
             dc.DrawText(_T("方向键移动    Enter 放置炸弹"), &player1Detail,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-            CRect player2Detail = player2Card;
-            player2Detail.left += 165;
-            player2Detail.right -= 20;
+            CRect player2Detail(
+                player2Card.left + 24, player2Card.top + 66,
+                player2Card.right - 24, player2Card.top + 110);
             dc.DrawText(_T("W A S D 移动    空格键放置炸弹"), &player2Detail,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
             dc.SelectObject(oldFont);
+
+            dc.RestoreDC(savedDC);
         }
 
         virtual void PostNcDestroy() override
@@ -129,6 +187,7 @@ namespace
     };
 
     BEGIN_MESSAGE_MAP(CGameHelpWindow, CFrameWnd)
+        ON_WM_ERASEBKGND()
         ON_WM_PAINT()
     END_MESSAGE_MAP()
 
@@ -161,22 +220,64 @@ namespace
 
     void SetDesignCoordinateSystem(CDC* pDC, const CRect& clientRect)
     {
-        if (clientRect.Width() <= 0 || clientRect.Height() <= 0)
+        SetDesignCoordinateSystemFor(pDC, clientRect, DESIGN_WIDTH, DESIGN_HEIGHT);
+    }
+
+    // 玩法说明窗口的缩放比例：既不小于当前显示器的缩放（高 DPI 屏幕文字够大），
+    // 也不小于主界面自身的缩放（说明文字与主界面大小相当）。
+    double GetHelpWindowScale(CWnd* pOwner)
+    {
+        double dpiScale = 1.0;
+
+        HWND hwnd = (pOwner != nullptr) ? pOwner->GetSafeHwnd() : nullptr;
+        HDC hdc = ::GetDC(hwnd);
+        if (hdc != nullptr)
+        {
+            const int dpi = ::GetDeviceCaps(hdc, LOGPIXELSY);
+            ::ReleaseDC(hwnd, hdc);
+            if (dpi > 0)
+                dpiScale = static_cast<double>(dpi) / 96.0;
+        }
+
+        double uiScale = 1.0;
+        if (pOwner != nullptr)
+        {
+            CRect ownerClient;
+            pOwner->GetClientRect(&ownerClient);
+            if (ownerClient.Width() > 0 && ownerClient.Height() > 0)
+            {
+                const double scaleX = static_cast<double>(ownerClient.Width()) / DESIGN_WIDTH;
+                const double scaleY = static_cast<double>(ownerClient.Height()) / DESIGN_HEIGHT;
+                uiScale = (scaleX < scaleY) ? scaleX : scaleY;
+            }
+        }
+
+        return (dpiScale > uiScale) ? dpiScale : uiScale;
+    }
+
+    void SetDesignCoordinateSystemFor(
+        CDC* pDC,
+        const CRect& clientRect,
+        int designWidth,
+        int designHeight)
+    {
+        if (clientRect.Width() <= 0 || clientRect.Height() <= 0 ||
+            designWidth <= 0 || designHeight <= 0)
             return;
 
-        const double scaleX = static_cast<double>(clientRect.Width()) / DESIGN_WIDTH;
-        const double scaleY = static_cast<double>(clientRect.Height()) / DESIGN_HEIGHT;
+        const double scaleX = static_cast<double>(clientRect.Width()) / designWidth;
+        const double scaleY = static_cast<double>(clientRect.Height()) / designHeight;
         const double scale = (scaleX < scaleY) ? scaleX : scaleY;
 
-        int viewportWidth = static_cast<int>(DESIGN_WIDTH * scale + 0.5);
-        int viewportHeight = static_cast<int>(DESIGN_HEIGHT * scale + 0.5);
+        int viewportWidth = static_cast<int>(designWidth * scale + 0.5);
+        int viewportHeight = static_cast<int>(designHeight * scale + 0.5);
         if (viewportWidth < 1) viewportWidth = 1;
         if (viewportHeight < 1) viewportHeight = 1;
         const int offsetX = (clientRect.Width() - viewportWidth) / 2;
         const int offsetY = (clientRect.Height() - viewportHeight) / 2;
 
         pDC->SetMapMode(MM_ANISOTROPIC);
-        pDC->SetWindowExt(DESIGN_WIDTH, DESIGN_HEIGHT);
+        pDC->SetWindowExt(designWidth, designHeight);
         pDC->SetViewportExt(viewportWidth, viewportHeight);
         pDC->SetViewportOrg(offsetX, offsetY);
     }
@@ -293,7 +394,7 @@ void CBubbleGameUIView::DrawTitle(CDC* pDC, const CString& title, int y)
     CRect clientRect = GetDesignRect();
 
     CFont font;
-    font.CreatePointFont(300, _T("Microsoft YaHei"));
+    CreateDesignFont(font, 300);
 
     CFont* oldFont = pDC->SelectObject(&font);
     pDC->SetTextColor(RGB(35, 82, 155));
@@ -318,7 +419,7 @@ void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString
 
     // ---- 大标题 ----
     CFont titleFont;
-    titleFont.CreatePointFont(320, _T("Microsoft YaHei"));
+    CreateDesignFont(titleFont, 320);
 
     CFont* oldFont = pDC->SelectObject(&titleFont);
     pDC->SetTextColor(RGB(38, 82, 155));
@@ -329,17 +430,21 @@ void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString
     pDC->SelectObject(oldFont);
 
     // ---- 副标题 ----
-    CFont subFont;
-    subFont.CreatePointFont(130, _T("Microsoft YaHei"));
+    // 传入空字符串时跳过副标题绘制，页面只保留大标题。
+    if (!subtitle.IsEmpty())
+    {
+        CFont subFont;
+        CreateDesignFont(subFont, 130);
 
-    oldFont = pDC->SelectObject(&subFont);
-    pDC->SetTextColor(RGB(110, 125, 150));
+        oldFont = pDC->SelectObject(&subFont);
+        pDC->SetTextColor(RGB(110, 125, 150));
 
-    // 副标题单独占一行，与主标题之间保留间距。
-    CRect subRect(0, (int)(H * 0.20), W, (int)(H * 0.28));
-    pDC->DrawText(subtitle, &subRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        // 副标题单独占一行，与主标题之间保留间距。
+        CRect subRect(0, (int)(H * 0.20), W, (int)(H * 0.28));
+        pDC->DrawText(subtitle, &subRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-    pDC->SelectObject(oldFont);
+        pDC->SelectObject(oldFont);
+    }
 }
 
 // ============================================================
@@ -351,7 +456,7 @@ void CBubbleGameUIView::DrawSubtitle(CDC* pDC, const CString& text, int y)
     CRect clientRect = GetDesignRect();
 
     CFont font;
-    font.CreatePointFont(120, _T("Microsoft YaHei"));
+    CreateDesignFont(font, 120);
 
     CFont* oldFont = pDC->SelectObject(&font);
     pDC->SetTextColor(RGB(105, 125, 155));
@@ -402,7 +507,7 @@ void CBubbleGameUIView::DrawButton(
     pDC->RoundRect(rect, CPoint(22, 22));
 
     CFont font;
-    font.CreatePointFont(145, _T("Microsoft YaHei"));
+    CreateDesignFont(font, 145);
     CFont* oldFont = pDC->SelectObject(&font);
 
     pDC->SetTextColor(textColor);
@@ -492,7 +597,7 @@ void CBubbleGameUIView::DrawModeSelect(CDC* pDC)
 {
     DrawPageBackground(pDC);
 
-    DrawHeader(pDC, _T("选择游戏模式"), _T("选择一种玩法开始游戏"));
+    DrawHeader(pDC, _T("选择游戏模式"), _T(""));
 
     CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
@@ -515,7 +620,7 @@ void CBubbleGameUIView::DrawModeSelect(CDC* pDC)
 
     // ---- 模式标题 ----
     CFont titleFont;
-    titleFont.CreatePointFont(190, _T("Microsoft YaHei"));
+    CreateDesignFont(titleFont, 190);
     CFont* oldFont = pDC->SelectObject(&titleFont);
     pDC->SetTextColor(RGB(45, 80, 145));
 
@@ -533,7 +638,7 @@ void CBubbleGameUIView::DrawModeSelect(CDC* pDC)
 
     // ---- 小说明 ----
     CFont subFont;
-    subFont.CreatePointFont(120, _T("Microsoft YaHei"));
+    CreateDesignFont(subFont, 120);
     oldFont = pDC->SelectObject(&subFont);
     pDC->SetTextColor(RGB(115, 130, 155));
 
@@ -571,7 +676,7 @@ void CBubbleGameUIView::DrawCharacterSelect(CDC* pDC)
     else
         title = (selectingPlayer == 1) ? _T("玩家1选择角色") : _T("玩家2选择角色");
 
-    DrawHeader(pDC, title, _T("点击角色卡片后确认选择"));
+    DrawHeader(pDC, title, _T(""));
 
     CRect clientRect = GetDesignRect();
     int W = clientRect.Width();
@@ -637,7 +742,7 @@ void CBubbleGameUIView::DrawCharacterSelect(CDC* pDC)
         }
 
         CFont font;
-        font.CreatePointFont(135, _T("Microsoft YaHei"));
+        CreateDesignFont(font, 135);
         CFont* oldFont = pDC->SelectObject(&font);
 
         pDC->SetTextColor(RGB(45, 75, 125));
@@ -673,7 +778,7 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
     int H = clientRect.Height();
     int centerX = W / 2;
 
-    DrawHeader(pDC, _T("准备开始"), _T("确认配置后开始游戏"));
+    DrawHeader(pDC, _T("准备开始"), _T(""));
 
     CString modeText = (selectedMode == 1) ? _T("单人模式") : _T("双人模式");
 
@@ -716,7 +821,7 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
 
     // ---- 小标题字体 ----
     CFont labelFont;
-    labelFont.CreatePointFont(120, _T("Microsoft YaHei"));
+    CreateDesignFont(labelFont, 120);
     CFont* oldFont = pDC->SelectObject(&labelFont);
     pDC->SetTextColor(RGB(120, 135, 160));
 
@@ -734,7 +839,7 @@ void CBubbleGameUIView::DrawReadyPage(CDC* pDC)
 
     // ---- 值字体 ----
     CFont valueFont;
-    valueFont.CreatePointFont(170, _T("Microsoft YaHei"));
+    CreateDesignFont(valueFont, 170);
     oldFont = pDC->SelectObject(&valueFont);
     pDC->SetTextColor(RGB(45, 80, 145));
 
