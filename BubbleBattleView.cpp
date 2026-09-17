@@ -86,7 +86,7 @@ void CBubbleBattleView::LoadBitmaps()
 
     // 辅助宏：加载后立即检查
 #define SAFE_LOAD(bmp, id)                                          \
-        do {                                                            \
+        do { if ((bmp).GetSafeHandle() != NULL) (bmp).DeleteObject();   \
             if (!(bmp).LoadBitmap(id)) {                                \
                 CString s;                                              \
                 s.Format(_T("位图加载失败！ID = %d (0x%X)"), id, id);   \
@@ -140,7 +140,7 @@ void CBubbleBattleView::OnInitialUpdate()
     m_gameMode = (g_gameConfig.mode == 0) ? MODE_BUBBLE : MODE_CLASSIC;
     m_enemyCount = g_gameConfig.enemyCount;
 
-    LoadBitmaps();
+    LoadBitmaps();   // 每局都重新加载，保证换角色后素材跟着换（宏里会先释放旧位图）
     ResetGame();
     SetTimer(TIMER_ID, 30, nullptr);
     SetFocus();
@@ -158,7 +158,7 @@ void CBubbleBattleView::ResetGame()
     m_playerDir = DIR_DOWN;
     m_player2Dir = DIR_DOWN;
     m_keyW = m_keyA = m_keyS = m_keyD = false;
-    m_gameOver = false;
+    m_gameOver = false; m_endDialogShown = false;
 
     m_bombs.clear();
     m_explosions.clear();

@@ -106,9 +106,6 @@ void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
     if (pOldView->IsKindOf(pViewClass))
         return;
 
-    // ============================================================
-    // 1. 先查缓存，目标视图可能已创建过
-    // ============================================================
     CView* pTargetView = nullptr;
 
     if (pViewClass == RUNTIME_CLASS(CBubbleGameUIView))
@@ -116,9 +113,6 @@ void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
     else if (pViewClass == RUNTIME_CLASS(CBubbleBattleView))
         pTargetView = m_pGameView;
 
-    // ============================================================
-    // 2. 首次切换：创建视图（不用文档 context）
-    // ============================================================
     BOOL bNewlyCreated = FALSE;
 
     if (pTargetView == nullptr)
@@ -132,7 +126,6 @@ void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
 
         UINT nID = AFX_IDW_PANE_FIRST + 1;
 
-        // 最后一个参数是 nullptr，不使用 CCreateContext。
         if (!pTargetView->Create(
             nullptr,
             nullptr,
@@ -155,9 +148,6 @@ void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
             m_pGameView = pTargetView;
     }
 
-    // ============================================================
-    // 3. 切换显示（不销毁任何视图）
-    // ============================================================
     pOldView->ShowWindow(SW_HIDE);
     pTargetView->ShowWindow(SW_SHOW);
     SetActiveView(pTargetView);
@@ -165,14 +155,11 @@ void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
     RecalcLayout();
     pTargetView->Invalidate();
 
-    // ============================================================
-    // 4. 新创建的视图，调用一次 OnInitialUpdate
-    //    （MFC 的 CreateView 会自动调用，我们使用 Create，所以手动调用）
-    // ============================================================
-    if (bNewlyCreated)
-    {
-        pTargetView->OnInitialUpdate();
-    }
+    
+    if (bNewlyCreated || pViewClass == RUNTIME_CLASS(CBubbleBattleView))
+        pTargetView->OnInitialUpdate();          
+    if (pViewClass == RUNTIME_CLASS(CBubbleGameUIView))
+        ((CBubbleGameUIView*)pTargetView)->ResetToCharacterSelect();  
 }
 
 // CMainFrame 诊断

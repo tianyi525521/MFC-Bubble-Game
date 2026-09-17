@@ -154,38 +154,11 @@ private:
 private:
 
     void DrawPageBackground(CDC* pDC);
+    void DrawHeader(CDC* pDC, const CString& title,const CString& subtitle );
 
-    void DrawTitle(
-        CDC* pDC,
-        const CString& title,
-        int y
-    );
+    void DrawButton( CDC* pDC,const CRect& rect,const CString& text,bool primary = false, bool selected = false);
 
-    void DrawSubtitle(
-        CDC* pDC,
-        const CString& text,
-        int y
-    );
-
-    void DrawHeader(
-        CDC* pDC,
-        const CString& title,
-        const CString& subtitle
-    );
-
-    void DrawButton(
-        CDC* pDC,
-        const CRect& rect,
-        const CString& text,
-        bool primary = false,
-        bool selected = false
-    );
-
-    void DrawCard(
-        CDC* pDC,
-        const CRect& rect,
-        bool selected = false
-    );
+    void DrawCard(CDC* pDC,const CRect& rect,bool selected = false );
 
     // ============================================================
     // 鼠标
@@ -197,6 +170,9 @@ public:
         UINT nFlags,
         CPoint point
     );
+
+    // 一局结束后回到角色选择页，方便重新选择角色（由主框架在切回本视图时调用）
+    void ResetToCharacterSelect();
 };
 
 

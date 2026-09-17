@@ -346,8 +346,6 @@ void CBubbleGameUIView::OnDraw(CDC* pDC)
 {
     CRect clientRect;
     GetClientRect(&clientRect);
-
-    // 先填满实际窗口，宽屏下两侧也保持与页面相同的背景颜色。
     pDC->FillSolidRect(clientRect, RGB(246, 249, 255));
 
     const int savedDC = pDC->SaveDC();
@@ -383,26 +381,6 @@ void CBubbleGameUIView::DrawPageBackground(CDC* pDC)
     // 整体浅背景
     pDC->FillSolidRect(clientRect, RGB(246, 249, 255));
     pDC->SetBkMode(TRANSPARENT);
-}
-
-// ============================================================
-// 公共标题
-// ============================================================
-
-void CBubbleGameUIView::DrawTitle(CDC* pDC, const CString& title, int y)
-{
-    CRect clientRect = GetDesignRect();
-
-    CFont font;
-    CreateDesignFont(font, 300);
-
-    CFont* oldFont = pDC->SelectObject(&font);
-    pDC->SetTextColor(RGB(35, 82, 155));
-
-    CRect rect(0, y, clientRect.Width(), y + 65);
-    pDC->DrawText(title, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-    pDC->SelectObject(oldFont);
 }
 
 // ============================================================
@@ -447,36 +425,12 @@ void CBubbleGameUIView::DrawHeader(CDC* pDC, const CString& title, const CString
     }
 }
 
-// ============================================================
-// 公共副标题
-// ============================================================
-
-void CBubbleGameUIView::DrawSubtitle(CDC* pDC, const CString& text, int y)
-{
-    CRect clientRect = GetDesignRect();
-
-    CFont font;
-    CreateDesignFont(font, 120);
-
-    CFont* oldFont = pDC->SelectObject(&font);
-    pDC->SetTextColor(RGB(105, 125, 155));
-
-    CRect rect(0, y, clientRect.Width(), y + 32);
-    pDC->DrawText(text, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-    pDC->SelectObject(oldFont);
-}
 
 // ============================================================
 // 公共按钮
 // ============================================================
 
-void CBubbleGameUIView::DrawButton(
-    CDC* pDC,
-    const CRect& rect,
-    const CString& text,
-    bool primary,
-    bool selected)
+void CBubbleGameUIView::DrawButton(CDC* pDC, const CRect& rect,const CString& text, bool primary, bool selected)
 {
     COLORREF fillColor;
     COLORREF borderColor;
@@ -516,19 +470,6 @@ void CBubbleGameUIView::DrawButton(
     CRect textRect = rect;
     textRect.DeflateRect(8, 4);
     pDC->DrawText(text, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-    if (selected)
-    {
-        // 静态橙色圆点表示当前选中的操作。
-        CBrush markerBrush(RGB(255, 150, 35));
-        CPen markerPen(PS_SOLID, 1, RGB(230, 120, 20));
-        CBrush* previousBrush = pDC->SelectObject(&markerBrush);
-        CPen* previousPen = pDC->SelectObject(&markerPen);
-        const int markerY = rect.top + rect.Height() / 2;
-        pDC->Ellipse(rect.left + 12, markerY - 6, rect.left + 24, markerY + 6);
-        pDC->SelectObject(previousBrush);
-        pDC->SelectObject(previousPen);
-    }
 
     pDC->SelectObject(oldFont);
     pDC->SelectObject(oldBrush);
@@ -1138,6 +1079,17 @@ CBubbleBattleDoc* CBubbleGameUIView::GetDocument() const
 }
 
 #endif
+
+
+// 一局结束后回到角色选择页：保留已选的游戏模式，清空两名玩家的角色，让下一局可以重新选角色
+void CBubbleGameUIView::ResetToCharacterSelect()
+{
+    player1Character = -1;
+    player2Character = -1;
+    selectingPlayer = 1;
+    gameState = GameState::CHARACTER_SELECT;
+    Invalidate();
+}
 
 
 
