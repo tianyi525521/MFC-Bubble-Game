@@ -1081,13 +1081,14 @@ CBubbleBattleDoc* CBubbleGameUIView::GetDocument() const
 #endif
 
 
-// 一局结束后回到角色选择页：保留已选的游戏模式，清空两名玩家的角色，让下一局可以重新选角色
-void CBubbleGameUIView::ResetToCharacterSelect()
+// 一局结束后回到主菜单：清空上一局的模式与角色选择，回到初始界面
+void CBubbleGameUIView::ResetToMainMenu()
 {
+    selectedMode = 0;
     player1Character = -1;
     player2Character = -1;
     selectingPlayer = 1;
-    gameState = GameState::CHARACTER_SELECT;
+    gameState = GameState::MAIN_MENU;
     Invalidate();
 }
 

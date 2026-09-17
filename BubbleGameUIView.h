@@ -171,8 +171,8 @@ public:
         CPoint point
     );
 
-    // 一局结束后回到角色选择页，方便重新选择角色（由主框架在切回本视图时调用）
-    void ResetToCharacterSelect();
+    // 一局结束后回到主菜单（由主框架在切回本视图时调用）
+    void ResetToMainMenu();
 };
 
 

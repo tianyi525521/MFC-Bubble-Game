@@ -159,7 +159,7 @@ void CMainFrame::SwitchToView(CRuntimeClass* pViewClass)
     if (bNewlyCreated || pViewClass == RUNTIME_CLASS(CBubbleBattleView))
         pTargetView->OnInitialUpdate();          
     if (pViewClass == RUNTIME_CLASS(CBubbleGameUIView))
-        ((CBubbleGameUIView*)pTargetView)->ResetToCharacterSelect();  
+        ((CBubbleGameUIView*)pTargetView)->ResetToMainMenu();  
 }
 
 // CMainFrame 诊断
